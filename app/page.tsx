@@ -159,16 +159,6 @@ export default function DocToPDFConverter() {
   return (
     <div className="container mx-auto p-4">
       <header className="flex justify-between items-center mb-8 py-4 border-b">
-        <div className="flex items-center">
-          <Image
-            src="/assets/untitled.jpeg"
-            alt="Your Name"
-            width={40}
-            height={40}
-            className="rounded-full mr-2"
-          />
-          <span className="font-semibold">Akshat Sharma</span>
-        </div>
         <h1 className="text-2xl font-bold">Rapid Converter</h1>
         <Button
           variant="ghost"
