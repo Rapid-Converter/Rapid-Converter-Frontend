@@ -1,101 +1,312 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useDropzone } from "react-dropzone";
+import { Download, Moon, Sun, Upload } from "lucide-react";
+import { useTheme } from "next-themes";
 import Image from "next/image";
+import axios from "axios";
 
-export default function Home() {
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Toast } from "@/components/ui/toast";
+
+interface PDF {
+  name: string;
+  url: string;
+}
+
+export default function DocToPDFConverter() {
+  const [file, setFile] = useState<File | null>(null);
+  const [pdfs, setPdfs] = useState<PDF[]>([]);
+  const [showEncryptionDialog, setShowEncryptionDialog] = useState(false);
+  const [encryptPDF, setEncryptPDF] = useState(false);
+  const [password, setPassword] = useState("");
+  const { theme, setTheme } = useTheme();
+
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
+  const onDrop = (acceptedFiles: File[]) => {
+    if (acceptedFiles[0]) {
+      setFile(acceptedFiles[0]);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
+    },
+    multiple: false,
+  });
+
+  const fetchPdfs = async () => {
+    try {
+      console.log("*************************************");
+      const response = await axios.get(`${API_BASE_URL}/list-pdfs`);
+      setPdfs(response.data.pdfs || []);
+      // console.log("****", pdfs);
+    } catch (error) {
+      console.error("Error fetching PDFs:", error);
+      Toast({
+        title: "Failed to fetch PDFs",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchPdfs();
+  }, []);
+
+  // useEffect(() => {
+  //   console.log("****", pdfs);
+  // }, [pdfs]);
+
+  const handleConvert = async () => {
+    if (!file) {
+      Toast({
+        title: "No file selected",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("encryption", encryptPDF.toString());
+    if (encryptPDF) {
+      formData.append("password", password);
+    }
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/convert`, formData, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: "application/pdf" })
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        encryptPDF ? `encrypted_${file.name}.pdf` : `${file.name}.pdf`
+      );
+      document.body.appendChild(link);
+      link.click();
+      fetchPdfs();
+
+      Toast({
+        title: "Conversion successful",
+      });
+    } catch (error) {
+      console.error("Error converting file:", error);
+      Toast({
+        title: "Conversion failed",
+        variant: "destructive",
+      });
+    }
+    setShowEncryptionDialog(false);
+  };
+
+  const handleDownload = async (pdf: PDF) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}${pdf.url}`, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: "application/pdf" })
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", pdf.name);
+      document.body.appendChild(link);
+      link.click();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      Toast({
+        title: "Download failed",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const lastPdf = pdfs.length > 0 ? pdfs[pdfs.length - 1] : null;
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="container mx-auto p-4">
+      <header className="flex justify-between items-center mb-8 py-4 border-b">
+        <div className="flex items-center">
+          <Image
+            src="/assets/untitled.jpeg"
+            alt="Your Name"
+            width={40}
+            height={40}
+            className="rounded-full mr-2"
+          />
+          <span className="font-semibold">Akshat Sharma</span>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        <h1 className="text-2xl font-bold">Rapid Converter</h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload your DOCX file</CardTitle>
+          <CardDescription>
+            Drag and drop your file or click to select
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            {...getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${
+              isDragActive ? "border-primary" : "border-muted-foreground"
+            }`}
+          >
+            <input {...getInputProps()} />
+            {file ? (
+              <p>{file.name}</p>
+            ) : (
+              <div>
+                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                <p>
+                  Drag &apos;n&apos; drop a DOCX file here, or click to select a
+                  file
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button
+            onClick={() => setShowEncryptionDialog(true)}
+            className="w-full"
+          >
+            Convert to PDF
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <h2 className="text-2xl font-semibold mt-12 mb-4">Generated PDFs</h2>
+      <div className="space-y-4">
+        {/* <Card key={pdfs.name} className="flex items-center justify-between p-4">
+          <div className="flex items-center space-x-4">
+            <div className="bg-primary/10 text-primary p-2 rounded">
+              <Download className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="font-medium">{pdfs.name}</h3>
+              <p className="text-sm text-muted-foreground">PDF Document</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => handleDownload(pdfs)}
+            size="sm"
+            className="flex items-center space-x-2"
+          >
+            <Download className="h-4 w-4" />
+            <span>Download</span>
+          </Button>
+        </Card> */}
+        {lastPdf ? (
+          <Card className="flex items-center justify-between p-4">
+            <div className="flex items-center space-x-4">
+              <div className="bg-primary/10 text-primary p-2 rounded">
+                <Download className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-medium">{lastPdf.name}</h3>
+                <p className="text-sm text-muted-foreground">PDF Document</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => handleDownload(lastPdf)}
+              size="sm"
+              className="flex items-center space-x-2"
+            >
+              <Download className="h-4 w-4" />
+              <span>Download</span>
+            </Button>
+          </Card>
+        ) : (
+          <p>No PDFs generated yet.</p>
+        )}
+      </div>
+
+      <Dialog
+        open={showEncryptionDialog}
+        onOpenChange={setShowEncryptionDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Encrypt PDF</DialogTitle>
+            <DialogDescription>
+              Do you want to encrypt the generated PDF?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="encrypt-pdf"
+              checked={encryptPDF}
+              onCheckedChange={setEncryptPDF}
+            />
+            <Label htmlFor="encrypt-pdf">Encrypt PDF</Label>
+          </div>
+          {encryptPDF && (
+            <div className="space-y-2 mt-4">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter a password"
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEncryptionDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConvert}>Convert</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
