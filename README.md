@@ -17,9 +17,6 @@ Rapid Converter is a powerful and user-friendly web-based application designed t
 - [Setup Instructions](#setup-instructions)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
 
 ---
 
