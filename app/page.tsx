@@ -43,7 +43,7 @@ export default function DocToPDFConverter() {
   const { theme, setTheme } = useTheme();
 
   const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://13.49.0.167:8000";
 
   const onDrop = (acceptedFiles: File[]) => {
     if (acceptedFiles[0]) {
